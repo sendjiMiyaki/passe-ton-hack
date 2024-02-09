@@ -1,0 +1,92 @@
+import socket
+from time import sleep
+
+# Fonction qui évalue une expression arithmétique en notation postfixe
+def evaluate_expression(expr):
+    # Sépare l'expression en tokens
+    tokens = expr.split()
+    # Crée une pile vide
+    stack = []
+
+    # Parcourt les tokens en ordre inverse
+    for token in reversed(tokens):
+        # Si le token est un nombre, on le met sur la pile
+        if token[0] == '-' and token[1:].isdigit() or token.isdigit():
+            stack.append(int(token))
+        # Si le token est un opérateur, on dépile deux nombres et on applique l'opérateur
+        elif token in {'+', '-', '*'}:
+            # Si la pile contient moins de deux nombres, l'expression est invalide
+            if len(stack) < 2:
+                raise ValueError("Invalid expression format")
+            # Dépile deux nombres
+            operand1, operand2 = stack.pop(), stack.pop()
+            # Applique l'opérateur
+            if token == '+':
+                stack.append(operand1 + operand2)
+            elif token == '-':
+                stack.append(operand1 - operand2)
+            elif token == '*':
+                stack.append(operand1 * operand2)
+        # Si le token n'est ni un nombre ni un opérateur, il est invalide
+        else:
+            raise ValueError("Invalid token: {}".format(token))
+
+    # Si la pile ne contient pas exactement un nombre, l'expression est invalide
+    if len(stack) != 1 or not tokens:
+        raise ValueError("Invalid expression format")
+
+    # Retourne le résultat sur la pile
+    return stack[0]
+
+# Fonction qui évalue une liste d'expressions arithmétiques en notation postfixe
+def evaluate_expression_list(expression_list):
+    # Crée une liste vide pour les résultats
+    results = []
+    # Parcourt les expressions de la liste
+    for expr in expression_list:
+        try:
+            # Évalue l'expression et ajoute le résultat à la liste
+            results.append(evaluate_expression(expr))
+        except ValueError as e:
+            # En cas d'erreur, ajoute le message d'erreur à la liste
+            results.append(str(e))
+    # Retourne la liste des résultats
+    return results
+
+# Adresse et port du serveur
+server_address = ('37.59.31.202', 2000)
+
+# Se connecte au serveur
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.connect(server_address)
+
+    # Reçoit le message de bienvenue du serveur
+    data = s.recv(1024)
+    sleep(1)
+    print(data.decode('utf-8'))
+
+    # Envoie le choix du mode au serveur
+    s.sendall(b'2')
+
+    # Reçoit le message du serveur pour le mode choisi
+    data = s.recv(1024)
+    sleep(1)
+    print(data.decode('utf-8'))
+
+    # Boucle 100 fois pour recevoir et évaluer des expressions du serveur
+    for _ in range(100):
+        # Reçoit une expression du serveur
+        data = s.recv(1024)
+        # Affiche l'expression
+        print(data.decode('utf-8'))
+        # Évalue l'expression
+        result = evaluate_expression(data.decode('utf-8'))
+        # Affiche le résultat
+        print(result)
+        # Envoie le résultat au serveur
+        s.sendall(str(result).encode('utf-8')) 
+         
+    # Reçoit le message final du serveur
+    data = s.recv(1024)
+    sleep(1)
+    print(data.decode('utf-8'))
